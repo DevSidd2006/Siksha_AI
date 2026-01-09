@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Siksha AI",
+    "slug": "siksha-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.siksha.ai"
+    },
+    "android": {
+      "package": "com.siksha.ai"
+    },
+    "scheme": "sikshaai"
+  }
+}

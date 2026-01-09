@@ -1,0 +1,4 @@
+# Gitignore for Backend
+node_modules/
+.env
+npm-debug.log
