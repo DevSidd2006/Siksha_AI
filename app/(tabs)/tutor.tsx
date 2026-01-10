@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -44,87 +44,6 @@ interface Message {
   extractedText?: string;
 }
 
-// Tutorial steps with UI element coordinates for spotlight effect
-const tutorialSteps: SpotlightStep[] = [
-  {
-    title: '👋 Welcome to Siksha AI!',
-    description: 'Your personal AI tutor is here to help you learn better. Let\'s take a quick tour!',
-    // No target - centered tooltip
-  },
-  {
-    title: '🌐 Connection Status',
-    description: 'This shows if you\'re online or offline. You can change this in Settings.',
-    targetArea: {
-      x: SCREEN_WIDTH - 120,
-      y: 50,
-      width: 100,
-      height: 35,
-    },
-    tooltipPosition: 'bottom',
-    arrowDirection: 'up',
-  },
-  {
-    title: '⌨️ Type Your Question',
-    description: 'Ask anything! Math problems, science questions, or help with homework.',
-    targetArea: {
-      x: 20,
-      y: SCREEN_HEIGHT - 140,
-      width: SCREEN_WIDTH - 220,
-      height: 45,
-    },
-    tooltipPosition: 'top',
-    arrowDirection: 'down',
-  },
-  {
-    title: '🎙️ Voice Input',
-    description: 'Tap to speak your question instead of typing. (Web browsers only)',
-    targetArea: {
-      x: SCREEN_WIDTH - 190,
-      y: SCREEN_HEIGHT - 140,
-      width: 40,
-      height: 40,
-    },
-    tooltipPosition: 'top',
-    arrowDirection: 'down',
-  },
-  {
-    title: '🖼️ Upload Images',
-    description: 'Take a photo or upload images of problems. AI will analyze and solve them!',
-    targetArea: {
-      x: SCREEN_WIDTH - 140,
-      y: SCREEN_HEIGHT - 140,
-      width: 40,
-      height: 40,
-    },
-    tooltipPosition: 'top',
-    arrowDirection: 'down',
-  },
-  {
-    title: '📤 Send Button',
-    description: 'Hit send to get instant answers from your AI tutor!',
-    targetArea: {
-      x: SCREEN_WIDTH - 85,
-      y: SCREEN_HEIGHT - 140,
-      width: 65,
-      height: 40,
-    },
-    tooltipPosition: 'top',
-    arrowDirection: 'down',
-  },
-  {
-    title: '➕ Start Fresh',
-    description: 'Tap here to start a new conversation. All chats are saved in History!',
-    targetArea: {
-      x: 20,
-      y: SCREEN_HEIGHT - 80,
-      width: SCREEN_WIDTH - 40,
-      height: 35,
-    },
-    tooltipPosition: 'top',
-    arrowDirection: 'down',
-  },
-];
-
 export default function TutorScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -145,26 +64,45 @@ export default function TutorScreen() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
 
-  // Refs for UI elements (removed as we're using hardcoded positions)
+  // Refs for measuring UI element positions
+  const modeBadgeRef = useRef<View>(null);
+  const inputRef = useRef<View>(null);
+  const voiceButtonRef = useRef<View>(null);
+  const imageButtonRef = useRef<View>(null);
+  const sendButtonRef = useRef<View>(null);
+  const newChatButtonRef = useRef<View>(null);
+
+  // State for measured positions
+  const [measuredPositions, setMeasuredPositions] = useState<{
+    modeBadge?: { x: number; y: number; width: number; height: number };
+    input?: { x: number; y: number; width: number; height: number };
+    voiceButton?: { x: number; y: number; width: number; height: number };
+    imageButton?: { x: number; y: number; width: number; height: number };
+    sendButton?: { x: number; y: number; width: number; height: number };
+    newChatButton?: { x: number; y: number; width: number; height: number };
+  }>({});
 
   useEffect(() => {
     loadCurrentChat();
     loadOfflineMode();
     checkSpeechSupport();
     loadProfile();
+    showWelcomeSplash();
     checkTutorial();
   }, []);
+
+  const showWelcomeSplash = () => {
+    // Always show welcome splash when app loads
+    setShowWelcome(true);
+  };
 
   const checkTutorial = async () => {
     try {
       const seen = await AsyncStorage.getItem('hasSeenTutorial_v1');
       console.log('🎓 Tutorial check - hasSeenTutorial_v1:', seen);
+      // Store the result but don't show tutorial yet - wait for welcome splash to complete
       if (!seen) {
-        console.log('🎉 First time user! Showing welcome splash...');
-        // Show welcome splash first, then tutorial
-        setTimeout(() => {
-          setShowWelcome(true);
-        }, 300);
+        console.log('🎉 First time user! Tutorial will show after welcome splash');
       } else {
         console.log('✅ Tutorial already seen, skipping onboarding');
       }
@@ -174,13 +112,77 @@ export default function TutorScreen() {
   };
 
   const handleWelcomeComplete = () => {
-    console.log('👋 Welcome splash completed, showing tutorial...');
+    console.log('👋 Welcome splash completed');
     setShowWelcome(false);
-    // Show tutorial directly with hardcoded positions
-    setTimeout(() => {
-      setShowTutorial(true);
-      console.log('📚 Tutorial modal should now be visible');
-    }, 200);
+    // Check if user has seen tutorial, if not show it
+    checkAndShowTutorial();
+  };
+
+  const checkAndShowTutorial = async () => {
+    try {
+      const seen = await AsyncStorage.getItem('hasSeenTutorial_v1');
+      if (!seen) {
+        console.log('🎉 First time user! Showing tutorial...');
+        setTimeout(() => {
+          setShowTutorial(true);
+          console.log('📚 Tutorial modal should now be visible');
+        }, 200);
+      } else {
+        console.log('✅ Tutorial already seen, skipping onboarding');
+      }
+    } catch (e) {
+      console.error('❌ Failed to check tutorial state', e);
+    }
+  };
+
+  const measureUIElements = () => {
+    const measurements: any = {};
+    let measurementCount = 0;
+    const totalMeasurements = 6;
+
+    const checkComplete = () => {
+      measurementCount++;
+      if (measurementCount === totalMeasurements) {
+        console.log('📏 All measurements complete:', measurements);
+        setMeasuredPositions(measurements);
+      }
+    };
+
+    modeBadgeRef.current?.measureInWindow((x, y, width, height) => {
+      measurements.modeBadge = { x, y, width, height };
+      console.log('📍 Mode badge:', { x, y, width, height });
+      checkComplete();
+    });
+
+    inputRef.current?.measureInWindow((x, y, width, height) => {
+      measurements.input = { x, y, width, height };
+      console.log('📍 Input:', { x, y, width, height });
+      checkComplete();
+    });
+
+    voiceButtonRef.current?.measureInWindow((x, y, width, height) => {
+      measurements.voiceButton = { x, y, width, height };
+      console.log('📍 Voice button:', { x, y, width, height });
+      checkComplete();
+    });
+
+    imageButtonRef.current?.measureInWindow((x, y, width, height) => {
+      measurements.imageButton = { x, y, width, height };
+      console.log('📍 Image button:', { x, y, width, height });
+      checkComplete();
+    });
+
+    sendButtonRef.current?.measureInWindow((x, y, width, height) => {
+      measurements.sendButton = { x, y, width, height };
+      console.log('📍 Send button:', { x, y, width, height });
+      checkComplete();
+    });
+
+    newChatButtonRef.current?.measureInWindow((x, y, width, height) => {
+      measurements.newChatButton = { x, y, width, height };
+      console.log('📍 New chat button:', { x, y, width, height });
+      checkComplete();
+    });
   };
 
   const handleTutorialNext = () => {
@@ -483,10 +485,8 @@ export default function TutorScreen() {
       console.log('🔄 Tutorial reset! Restarting onboarding...');
       setTutorialStep(0);
       setShowWelcome(true);
-      Alert.alert('Tutorial Reset', 'The onboarding tutorial will now restart!');
     } catch (e) {
       console.error('❌ Failed to reset tutorial', e);
-      Alert.alert('Error', 'Failed to reset tutorial');
     }
   };
 
@@ -496,6 +496,52 @@ export default function TutorScreen() {
     setMessages([]);
     await clearCurrentChat();
     Alert.alert('New chat started');
+  };
+
+  // Function to get tutorial steps with measured positions
+  const getTutorialSteps = (): SpotlightStep[] => {
+    return [
+      {
+        title: '👋 Welcome to Siksha AI!',
+        description: 'Your personal AI tutor is here to help you learn better. Let\'s take a quick tour!',
+        // No target - centered tooltip
+      },
+      {
+        title: '📊 Dashboard',
+        description: 'Explore your learning dashboard to track progress, access subjects, and continue reading your materials.',
+        targetArea: measuredPositions.modeBadge || { x: 20, y: SCREEN_HEIGHT - 90, width: SCREEN_WIDTH - 45, height: 40},
+        tooltipPosition: 'bottom',
+        arrowDirection: 'down',
+      },
+      {
+        title: '⌨️ Question Input Field',
+        description: 'Type your questions here. You can ask about math, science, homework, or any subject!',
+        targetArea: measuredPositions.input || { x: 12, y: SCREEN_HEIGHT - 190, width: SCREEN_WIDTH - 135, height: 50 },
+        tooltipPosition: 'top',
+        arrowDirection: 'down',
+      },
+      {
+        title: '🖼️ Image Upload',
+        description: 'Upload photos of problems or diagrams. AI will analyze and help solve them!',
+        targetArea: measuredPositions.imageButton || { x: SCREEN_WIDTH - 130, y: SCREEN_HEIGHT - 190, width: 40, height: 40 },
+        tooltipPosition: 'top',
+        arrowDirection: 'down',
+      },
+      {
+        title: '📤 Send Question',
+        description: 'Click Send to get an instant answer from your AI tutor. Make sure to ask a question first!',
+        targetArea: measuredPositions.sendButton || { x: SCREEN_WIDTH - 80, y: SCREEN_HEIGHT - 190, width: 60, height: 44 },
+        tooltipPosition: 'top',
+        arrowDirection: 'down',
+      },
+      {
+        title: '➕ Start New Chat',
+        description: 'Begin a fresh conversation. Your previous chats are automatically saved in History.',
+        targetArea: measuredPositions.newChatButton || { x: 16, y: SCREEN_HEIGHT - 140, width: SCREEN_WIDTH - 32, height: 40 },
+        tooltipPosition: 'top',
+        arrowDirection: 'down',
+      },
+    ];
   };
 
   return (
@@ -512,6 +558,7 @@ export default function TutorScreen() {
           <Text style={styles.resetTutorialText}>🔄</Text>
         </TouchableOpacity>
         <View
+          ref={modeBadgeRef}
           style={[styles.modeBadge, offlineMode ? styles.modeBadgeOffline : styles.modeBadgeOnline]}
         >
           <Text style={[styles.modeText, offlineMode ? styles.modeTextOffline : styles.modeTextOnline]}>
@@ -567,7 +614,7 @@ export default function TutorScreen() {
           )}
 
           <View style={styles.inputRow}>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1 }} ref={inputRef}>
               <TextInput
                 style={[styles.input, extractedText && styles.inputWithExtractedText]}
                 placeholder={isListening ? 'Listening...' : 'Ask your question...'}
@@ -581,6 +628,7 @@ export default function TutorScreen() {
             </View>
             {speechSupported && (
               <TouchableOpacity
+                ref={voiceButtonRef}
                 style={[
                   styles.voiceButton,
                   isListening && styles.voiceButtonActive,
@@ -594,6 +642,7 @@ export default function TutorScreen() {
               </TouchableOpacity>
             )}
             <TouchableOpacity
+              ref={imageButtonRef}
               style={styles.imageButton}
               onPress={handlePickImage}
               disabled={isLoading}
@@ -601,6 +650,7 @@ export default function TutorScreen() {
               <Text style={styles.imageButtonText}>🖼️</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              ref={sendButtonRef}
               style={[styles.sendButton, (!inputText.trim() && !listeningTranscript.trim() || isLoading) && styles.sendButtonDisabled]}
               onPress={extractedText ? handleSendWithExtractedText : handleSend}
               disabled={(!inputText.trim() && !listeningTranscript.trim()) || isLoading}
@@ -609,6 +659,7 @@ export default function TutorScreen() {
             </TouchableOpacity>
           </View>
           <TouchableOpacity
+            ref={newChatButtonRef}
             style={styles.newChatButton}
             onPress={handleNewChat}
           >
@@ -725,25 +776,15 @@ export default function TutorScreen() {
       <SpotlightTutorial
         visible={showTutorial}
         currentStep={tutorialStep}
-        totalSteps={7}
-        stepData={getTutorialStepWithMeasuredPosition(tutorialStep)}
+        totalSteps={6}
+        stepData={getTutorialSteps()[tutorialStep] || getTutorialSteps()[0]}
         onNext={handleTutorialNext}
         onSkip={handleTutorialSkip}
         onFinish={handleTutorialFinish}
       />
     </SafeAreaView>
   );
-
-  // Function to get tutorial step with measured positions
-  function getTutorialStepWithMeasuredPosition(step: number): SpotlightStep {
-    const baseSteps = [...tutorialSteps];
-
-    // For now, use the hardcoded positions as measured positions may not be accurate
-    // TODO: Improve position measurement for better spotlight accuracy
-    return baseSteps[step] || baseSteps[0];
-  }
 }
-
 
 const styles = StyleSheet.create({
   container: {

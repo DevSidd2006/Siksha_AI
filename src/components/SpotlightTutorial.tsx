@@ -91,52 +91,13 @@ export function SpotlightTutorial({
 
     const progress = ((currentStep + 1) / totalSteps) * 100;
 
-    // Calculate tooltip position based on target area
+    // Calculate tooltip position - always center it
     const getTooltipStyle = () => {
-        if (!stepData.targetArea) {
-            // Center tooltip if no target
-            return {
-                top: SCREEN_HEIGHT / 2 - 150,
-                left: 20,
-                right: 20,
-            };
-        }
-
-        const { x, y, width, height } = stepData.targetArea;
-        const tooltipPosition = stepData.tooltipPosition || 'bottom';
-
-        switch (tooltipPosition) {
-            case 'top':
-                return {
-                    bottom: SCREEN_HEIGHT - y + 20,
-                    left: Math.max(20, x - 100),
-                    right: Math.max(20, SCREEN_WIDTH - (x + width + 100)),
-                };
-            case 'bottom':
-                return {
-                    top: y + height + 20,
-                    left: Math.max(20, x - 50),
-                    right: Math.max(20, SCREEN_WIDTH - (x + width + 50)),
-                };
-            case 'left':
-                return {
-                    top: y,
-                    right: SCREEN_WIDTH - x + 20,
-                    maxWidth: 250,
-                };
-            case 'right':
-                return {
-                    top: y,
-                    left: x + width + 20,
-                    maxWidth: 250,
-                };
-            default:
-                return {
-                    top: y + height + 20,
-                    left: 20,
-                    right: 20,
-                };
-        }
+        return {
+            top: SCREEN_HEIGHT / 2 - 150,
+            left: 20,
+            right: 20,
+        };
     };
 
     // Get arrow position
