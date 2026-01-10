@@ -7,21 +7,90 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
 import { DashboardService, DashboardStats } from '@/services/dashboardService';
 import { AchievementService } from '@/services/achievementService';
 import { getProfile } from '@/storage/profileStore';
+
+// Import data with fallback
+let CLASS_9_SCIENCE: any[] = [];
+let CLASS_9_SCIENCE_QUIZ: any[] = [];
+
+try {
+  const scienceData = require('@/data/class9Science');
+  CLASS_9_SCIENCE = scienceData.CLASS_9_SCIENCE || [];
+} catch (error) {
+  console.error('Failed to load flashcard data:', error);
+}
+
+try {
+  const quizData = require('@/data/class9ScienceQuiz');
+  CLASS_9_SCIENCE_QUIZ = quizData.CLASS_9_SCIENCE_QUIZ || [];
+} catch (error) {
+  console.error('Failed to load quiz data:', error);
+}
+
+interface ChapterSummary {
+  id: number;
+  title: string;
+  flashcards: number;
+  quizQuestions: number;
+  difficulty: string;
+}
 
 export default function DashboardScreen() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [chapterSummaries, setChapterSummaries] = useState<ChapterSummary[]>([]);
 
   useEffect(() => {
     loadDashboardData();
+    loadChapterSummaries();
   }, []);
+
+  const loadChapterSummaries = () => {
+    try {
+      const summaries: ChapterSummary[] = [];
+      
+      if (!CLASS_9_SCIENCE || CLASS_9_SCIENCE.length === 0) {
+        console.warn('Flashcard data not available');
+        return;
+      }
+
+      CLASS_9_SCIENCE.forEach((chapter: any) => {
+        if (!chapter || !chapter.id) return;
+        
+        const quizCount = CLASS_9_SCIENCE_QUIZ.filter((q: any) => q.chapter === chapter.id).length;
+        const difficulties = CLASS_9_SCIENCE_QUIZ
+          .filter((q: any) => q.chapter === chapter.id)
+          .map((q: any) => q.difficulty);
+        
+        const difficultyBreakdown = {
+          easy: difficulties.filter((d: string) => d === 'easy').length,
+          medium: difficulties.filter((d: string) => d === 'medium').length,
+          hard: difficulties.filter((d: string) => d === 'hard').length,
+        };
+
+        summaries.push({
+          id: chapter.id,
+          title: chapter.title,
+          flashcards: chapter.cards?.length || 0,
+          quizQuestions: quizCount,
+          difficulty: `${difficultyBreakdown.easy}E • ${difficultyBreakdown.medium}M • ${difficultyBreakdown.hard}H`,
+        });
+      });
+
+      setChapterSummaries(summaries);
+    } catch (error) {
+      console.error('Error loading chapter summaries:', error);
+    }
+  };
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -147,14 +216,18 @@ export default function DashboardScreen() {
           <Text style={styles.sectionTitle}>Subjects</Text>
           <View style={styles.subjectsGrid}>
             {[
-              { emoji: '🔬', name: 'Science', color: '#00BCD4' },
-              { emoji: '📐', name: 'Mathematics', color: '#FF9800' },
-              { emoji: '🌍', name: 'History', color: '#4CAF50' },
-              { emoji: '🌐', name: 'English', color: '#9C27B0' },
-              { emoji: '🗺️', name: 'Geography', color: '#F44336' },
-              { emoji: '💻', name: 'Computer', color: '#2196F3' },
+              { emoji: '🔬', name: 'Science', color: '#00BCD4', key: 'science' },
+              { emoji: '📐', name: 'Mathematics', color: '#FF9800', key: 'math' },
+              { emoji: '🌍', name: 'History', color: '#4CAF50', key: 'history' },
+              { emoji: '🌐', name: 'English', color: '#9C27B0', key: 'english' },
+              { emoji: '🗺️', name: 'Geography', color: '#F44336', key: 'geography' },
+              { emoji: '💻', name: 'Computer', color: '#2196F3', key: 'computer' },
             ].map((subject, idx) => (
-              <TouchableOpacity key={idx} style={[styles.subjectCard, { borderTopColor: subject.color }]}>
+              <TouchableOpacity 
+                key={idx} 
+                style={[styles.subjectCard, { borderTopColor: subject.color }]}
+                onPress={() => subject.key === 'science' && setSelectedSubject('science')}
+              >
                 <Text style={styles.subjectEmoji}>{subject.emoji}</Text>
                 <Text style={styles.subjectName}>{subject.name}</Text>
               </TouchableOpacity>
@@ -164,6 +237,99 @@ export default function DashboardScreen() {
 
         <View style={{ height: 20 }} />
       </ScrollView>
+
+      {/* Subject Detail Modal */}
+      <Modal
+        visible={selectedSubject === 'science'}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setSelectedSubject(null)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setSelectedSubject(null)}>
+              <MaterialIcons name="arrow-back" size={24} color="#ffffff" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Science - Class 9</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <View style={styles.subjectHeaderCard}>
+              <Text style={styles.subjectHeaderEmoji}>🔬</Text>
+              <Text style={styles.subjectHeaderTitle}>Science</Text>
+              <Text style={styles.subjectHeaderSubtitle}>Class 9 - NCERT</Text>
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{chapterSummaries.length}</Text>
+                  <Text style={styles.statLabel}>Chapters</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>
+                    {chapterSummaries.reduce((sum, ch) => sum + ch.flashcards, 0)}
+                  </Text>
+                  <Text style={styles.statLabel}>Flashcards</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>
+                    {chapterSummaries.reduce((sum, ch) => sum + ch.quizQuestions, 0)}
+                  </Text>
+                  <Text style={styles.statLabel}>Questions</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.chaptersContainer}>
+              <Text style={styles.chaptersTitle}>Chapters</Text>
+              {chapterSummaries.map((chapter, idx) => (
+                <View key={idx} style={styles.chapterCard}>
+                  <View style={styles.chapterHeader}>
+                    <View style={styles.chapterNumber}>
+                      <Text style={styles.chapterNumberText}>{chapter.id}</Text>
+                    </View>
+                    <View style={styles.chapterInfo}>
+                      <Text style={styles.chapterTitle}>{chapter.title}</Text>
+                      <Text style={styles.chapterDifficulty}>{chapter.difficulty}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.chapterStats}>
+                    <View style={styles.chapterStatItem}>
+                      <MaterialIcons name="layers" size={16} color="#FF6B35" />
+                      <Text style={styles.chapterStatText}>
+                        {chapter.flashcards} Flashcards
+                      </Text>
+                    </View>
+                    <View style={styles.chapterStatItem}>
+                      <MaterialIcons name="quiz" size={16} color="#4CAF50" />
+                      <Text style={styles.chapterStatText}>
+                        {chapter.quizQuestions} Questions
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.chapterActions}>
+                    <TouchableOpacity style={styles.actionButton}>
+                      <MaterialIcons name="layers" size={18} color="#FF6B35" />
+                      <Text style={styles.actionButtonText}>Study</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton}>
+                      <MaterialIcons name="quiz" size={18} color="#4CAF50" />
+                      <Text style={styles.actionButtonText}>Quiz</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton}>
+                      <MaterialIcons name="note" size={18} color="#FF9800" />
+                      <Text style={styles.actionButtonText}>Notes</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            <View style={{ height: 20 }} />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -358,5 +524,158 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#f44336',
     textAlign: 'center',
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#2196F3',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  modalContent: {
+    flex: 1,
+  },
+  subjectHeaderCard: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  subjectHeaderEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  subjectHeaderTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  subjectHeaderSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 24,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#2196F3',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  chaptersContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  chaptersTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 12,
+  },
+  chapterCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  chapterHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  chapterNumber: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FF6B35',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  chapterNumberText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  chapterInfo: {
+    flex: 1,
+  },
+  chapterTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  chapterDifficulty: {
+    fontSize: 12,
+    color: '#666',
+  },
+  chapterStats: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 12,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  chapterStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  chapterStatText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  chapterActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1a1a1a',
   },
 });
