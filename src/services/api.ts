@@ -17,8 +17,8 @@ const getDevBaseUrl = () => {
   return 'http://localhost:3000';
 };
 
-const API_URL = __DEV__ 
-  ? getDevBaseUrl()
+const API_URL = __DEV__
+  ? 'http://192.168.1.9:3000'
   : 'https://your-production-url.com';
 
 export interface TutorResponse {
@@ -38,7 +38,7 @@ export async function sendQuestion(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         question,
         studentGrade, // Send student context to backend
       }),

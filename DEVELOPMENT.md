@@ -37,7 +37,7 @@ If using a physical phone with Expo Go, update the API URL:
 2. Update `src/services/api.ts`:
    ```typescript
    const API_URL = __DEV__ 
-     ? 'http://192.168.1.100:3000'  // Use your IP
+     ? 'http://192.168.1.9:3000'  // Use your IP
      : 'https://your-production-url.com';
    ```
 
