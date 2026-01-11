@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendQuestion } from '@/services/api';
 import { generateOfflineAnswer } from '@/services/offlineTutor';
 import { getOfflineMode } from '@/storage/settingsStore';
@@ -28,6 +29,8 @@ import { SpeechToTextService } from '@/services/speechToText';
 import { getProfile } from '@/storage/profileStore';
 import { OCRService } from '@/services/ocrService';
 import { VisionLanguageService } from '@/services/visionLanguageService';
+import { WelcomeSplash } from '@/components/WelcomeSplash';
+import { SpotlightTutorial, SpotlightStep } from '@/components/SpotlightTutorial';
 
 interface Message {
   id: string;
@@ -54,13 +57,108 @@ export default function TutorScreen() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [showExtractedTextModal, setShowExtractedTextModal] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [currentTutorialStep, setCurrentTutorialStep] = useState(0);
 
   useEffect(() => {
     loadCurrentChat();
     loadOfflineMode();
     checkSpeechSupport();
     loadProfile();
+    checkTutorial();
   }, []);
+
+  const checkTutorial = async () => {
+    try {
+      const hasSeenTutorial = await AsyncStorage.getItem('hasSeenTutorial_v1');
+      if (!hasSeenTutorial) {
+        setShowWelcome(true);
+      }
+    } catch (error) {
+      console.error('Error checking tutorial:', error);
+    }
+  };
+
+  const handleWelcomeComplete = () => {
+    setShowWelcome(false);
+    checkTutorialStatus();
+  };
+
+  const checkTutorialStatus = async () => {
+    try {
+      const hasSeenTutorial = await AsyncStorage.getItem('hasSeenTutorial_v1');
+      if (!hasSeenTutorial) {
+        setShowTutorial(true);
+        setCurrentTutorialStep(0);
+      }
+    } catch (error) {
+      console.error('Error checking tutorial status:', error);
+    }
+  };
+
+  const getTutorialSteps = (): SpotlightStep[] => [
+    {
+      title: 'Welcome to Siksha AI! 👋',
+      description: 'Your personal AI tutor is here to help you with any questions about your studies.',
+      tooltipPosition: 'bottom',
+    },
+    {
+      title: 'Ask Your Questions 💬',
+      description: 'Type any question about your studies and get instant help from your AI tutor.',
+      targetArea: { x: 16, y: 200, width: 300, height: 40 },
+      tooltipPosition: 'bottom',
+      arrowDirection: 'down',
+    },
+    {
+      title: 'Upload Images 📸',
+      description: 'Click the camera icon to upload images of problems or notes for analysis.',
+      targetArea: { x: 300, y: 200, width: 40, height: 40 },
+      tooltipPosition: 'bottom',
+      arrowDirection: 'down',
+    },
+    {
+      title: 'Send Your Question ✈️',
+      description: 'Press Send to get a detailed explanation from your AI tutor.',
+      targetArea: { x: 350, y: 200, width: 50, height: 40 },
+      tooltipPosition: 'bottom',
+      arrowDirection: 'down',
+    },
+    {
+      title: 'Voice Input 🎙️',
+      description: 'Use the microphone to ask questions by voice (available on web).',
+      targetArea: { x: 260, y: 200, width: 40, height: 40 },
+      tooltipPosition: 'bottom',
+      arrowDirection: 'down',
+    },
+    {
+      title: 'Start Learning! 🚀',
+      description: 'You\'re all set! Ask your first question and let\'s start learning together.',
+      tooltipPosition: 'bottom',
+    },
+  ];
+
+  const handleTutorialNext = () => {
+    if (currentTutorialStep < getTutorialSteps().length - 1) {
+      setCurrentTutorialStep(currentTutorialStep + 1);
+    }
+  };
+
+  const handleTutorialSkip = async () => {
+    await AsyncStorage.setItem('hasSeenTutorial_v1', 'true');
+    setShowTutorial(false);
+  };
+
+  const handleTutorialFinish = async () => {
+    await AsyncStorage.setItem('hasSeenTutorial_v1', 'true');
+    setShowTutorial(false);
+  };
+
+  const resetTutorial = async () => {
+    await AsyncStorage.removeItem('hasSeenTutorial_v1');
+    setCurrentTutorialStep(0);
+    setShowWelcome(true);
+  };
 
   const loadCurrentChat = async () => {
     const chat = await getCurrentChat();
@@ -342,10 +440,18 @@ export default function TutorScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Ask Your Doubt</Text>
-        <View style={[styles.modeBadge, offlineMode ? styles.modeBadgeOffline : styles.modeBadgeOnline]}>
-          <Text style={[styles.modeText, offlineMode ? styles.modeTextOffline : styles.modeTextOnline]}>
-            {offlineMode ? '📡 Offline' : '🌐 Online'}
-          </Text>
+        <View style={styles.headerRight}>
+          <TouchableOpacity 
+            style={styles.resetButton}
+            onPress={resetTutorial}
+          >
+            <Text style={styles.resetButtonText}>🔄</Text>
+          </TouchableOpacity>
+          <View style={[styles.modeBadge, offlineMode ? styles.modeBadgeOffline : styles.modeBadgeOnline]}>
+            <Text style={[styles.modeText, offlineMode ? styles.modeTextOffline : styles.modeTextOnline]}>
+              {offlineMode ? '📡 Offline' : '🌐 Online'}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -537,6 +643,25 @@ export default function TutorScreen() {
           </View>
         </SafeAreaView>
       </Modal>
+
+      {/* Welcome Splash */}
+      <WelcomeSplash 
+        visible={showWelcome}
+        onComplete={handleWelcomeComplete}
+      />
+
+      {/* Spotlight Tutorial */}
+      {showTutorial && (
+        <SpotlightTutorial
+          visible={showTutorial}
+          currentStep={currentTutorialStep}
+          totalSteps={getTutorialSteps().length}
+          stepData={getTutorialSteps()[currentTutorialStep]}
+          onNext={handleTutorialNext}
+          onSkip={handleTutorialSkip}
+          onFinish={handleTutorialFinish}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -558,6 +683,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  resetButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resetButtonText: {
+    fontSize: 18,
   },
   modeBadge: {
     paddingHorizontal: 12,

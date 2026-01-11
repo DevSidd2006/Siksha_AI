@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   getProfile,
   updateProfile,
@@ -22,6 +22,7 @@ import {
   updateWeeklyGoal,
   StudentProfile,
 } from '@/storage/profileStore';
+import { logoutUser, getAuthSession } from '@/storage/authstore';
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -34,6 +35,8 @@ export default function ProfileScreen() {
   const [editingLearningStyle, setEditingLearningStyle] = useState(false);
   const [editingGoal, setEditingGoal] = useState(false);
   const [tempGoal, setTempGoal] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const router = useRouter();
 
   const grades = ['Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9'];
   const subjects = [
@@ -54,8 +57,46 @@ export default function ProfileScreen() {
   useFocusEffect(
     React.useCallback(() => {
       loadProfile();
+      loadUserEmail();
     }, [])
   );
+
+  const loadUserEmail = async () => {
+    try {
+      const session = await getAuthSession();
+      if (session) {
+        setUserEmail(session.email);
+      }
+    } catch (error) {
+      console.error('Error loading user email:', error);
+    }
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          onPress: () => {},
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          onPress: async () => {
+            try {
+              await logoutUser();
+              router.replace('/');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to logout');
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
 
   const loadProfile = async () => {
     try {
@@ -314,6 +355,22 @@ export default function ProfileScreen() {
           >
             <Text style={styles.saveButtonText}>Continue</Text>
           </TouchableOpacity>
+
+          {/* User Email Display */}
+          {userEmail && (
+            <View style={styles.userEmailSection}>
+              <Text style={styles.userEmailLabel}>Logged in as</Text>
+              <Text style={styles.userEmail}>{userEmail}</Text>
+            </View>
+          )}
+
+          {/* Logout Button */}
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={{ height: 20 }} />
@@ -526,6 +583,38 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   saveButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  userEmailSection: {
+    marginTop: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e8e8e8',
+  },
+  userEmailLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#999',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  userEmail: {
+    fontSize: 14,
+    color: '#1a1a1a',
+    fontWeight: '500',
+  },
+  logoutButton: {
+    backgroundColor: '#FF6B6B',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  logoutButtonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',

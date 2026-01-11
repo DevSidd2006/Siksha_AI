@@ -26,7 +26,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="tutor"
         options={{
-          title: '🤖 AI Tutor',
+          title: 'AI Tutor',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="chat" size={size} color={color} />
           ),
@@ -35,7 +35,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="flashcards"
         options={{
-          title: '📚 Flashcards',
+          title: 'Flashcards',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="layers" size={size} color={color} />
           ),
@@ -44,7 +44,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="quiz"
         options={{
-          title: '📝 Quiz',
+          title: 'Quiz',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="quiz" size={size} color={color} />
           ),
@@ -53,7 +53,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="progress"
         options={{
-          title: '📊 Progress',
+          title: 'Progress',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="trending-up" size={size} color={color} />
           ),
@@ -62,7 +62,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: '🏠 Dashboard',
+          title: 'Dashboard',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="dashboard" size={size} color={color} />
           ),
@@ -71,7 +71,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="notes"
         options={{
-          title: '📘 Notes',
+          title: 'Notes',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="note" size={size} color={color} />
           ),
@@ -80,7 +80,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: '📜 History',
+          title: 'History',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="history" size={size} color={color} />
           ),
@@ -89,7 +89,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: '👤 Profile',
+          title: 'Profile',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="person" size={size} color={color} />
           ),
@@ -98,7 +98,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: '⚙️ Settings',
+          title: 'Settings',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="settings" size={size} color={color} />
           ),
